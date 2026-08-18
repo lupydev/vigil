@@ -1,0 +1,61 @@
+name: New rule
+description: A kind of anomaly Vigil should learn to see.
+labels: ["new-rule"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A good rule is specific about what it would say and, more importantly,
+        about when it would stay quiet. A rule that fires on every build is
+        worse than no rule at all.
+
+  - type: textarea
+    id: anomaly
+    attributes:
+      label: What should it detect?
+      description: Describe the situation a user would want to be told about.
+    validations:
+      required: true
+
+  - type: textarea
+    id: happened
+    attributes:
+      label: Has this actually bitten you?
+      description: >
+        Vigil exists because three Gradle daemons ran hot for six days on a real
+        machine. Rules built from real incidents tend to be right; rules built
+        from imagination tend to cry wolf. Tell us the incident if there was one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Where would the evidence come from?
+      description: >
+        Prefer facts the kernel already knows over facts we would have to
+        accumulate. A stateless rule beats a stateful one of equal accuracy,
+        because it works from the first reading and survives a restart.
+      placeholder: >
+        e.g. proc_pidinfo already reports open file descriptors, so this needs
+        no history
+    validations:
+      required: true
+
+  - type: textarea
+    id: quiet
+    attributes:
+      label: When must it stay quiet?
+      description: >
+        The hard part. List the legitimate situations that would look identical
+        to the anomaly, and what distinguishes them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: remedy
+    attributes:
+      label: What would it suggest?
+      description: >
+        Remember that Vigil never acts. The finding has to end in something a
+        person can read, understand, and decide about.

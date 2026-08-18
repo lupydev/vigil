@@ -1,0 +1,67 @@
+name: Bug report
+description: Something crashed, failed to build, or behaved incorrectly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If a **rule** fired wrongly or stayed silent when it should have spoken,
+        use the "False finding" template instead — that is a different kind of
+        report and it needs different evidence.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scan-output
+    attributes:
+      label: Output of `swift run vigil --scan`
+      description: >
+        Run it and paste the whole thing. If the app will not build or run at
+        all, paste the build error instead.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "26.6 (25G72) — from `sw_vers`"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Chip
+      description: >
+        This matters more than it looks. The kernel reports CPU time in mach
+        absolute-time ticks whose scale differs between architectures, and that
+        has already caused one 42x reporting bug.
+      options:
+        - Apple Silicon (M1/M2/M3/M4 or later)
+        - Intel
+    validations:
+      required: true
+
+  - type: input
+    id: swift
+    attributes:
+      label: Swift version
+      placeholder: "6.2.3 — from `swift --version`"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I ran `swift run coretests` and reported the result below if it failed.
+        - label: I checked the Known limitations section of the README.

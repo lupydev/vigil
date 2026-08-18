@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Known limitations
+    url: https://github.com/lupydev/vigil#known-limitations
+    about: >
+      Processes owned by other users are invisible, the menu bar icon can hide
+      behind the notch, and disk free space counts purgeable storage. Check here
+      before reporting.
+  - name: Contributing guide
+    url: https://github.com/lupydev/vigil/blob/main/CONTRIBUTING.md
+    about: The two invariants — never acts, never writes to disk — and how to add a rule.

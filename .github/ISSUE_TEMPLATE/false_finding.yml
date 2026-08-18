@@ -1,0 +1,76 @@
+name: False finding
+description: A rule fired when it should not have, or stayed quiet when it should have spoken.
+labels: ["false-finding"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These are the most useful reports this project can get. Every threshold
+        in Vigil is a claim about what normal looks like, and the only way to
+        find out where those claims are wrong is for someone to run it on a
+        machine we never measured.
+
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Which way did it go wrong?
+      options:
+        - False positive — it flagged something that was fine
+        - False negative — it missed something that was genuinely stuck
+    validations:
+      required: true
+
+  - type: dropdown
+    id: rule
+    attributes:
+      label: Which rule
+      options:
+        - LifetimeCpuRule
+        - SustainedCpuRule
+        - SwapPressureRule
+        - DiskPressureRule
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: process
+    attributes:
+      label: What was the process actually doing?
+      description: >
+        This is the part only you can answer. A video export pinned at 100% for
+        three hours is correct behaviour; a test daemon pinned at 100% for three
+        hours is abandoned work. They are indistinguishable from the numbers
+        alone, which is exactly why we need your account of it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scan-output
+    attributes:
+      label: Output of `swift run vigil --scan`
+      description: >
+        Taken while the situation was happening, if you can. For a false
+        negative, `ps -Ao pcpu,etime,time,comm -r | head` alongside it helps a
+        lot — it shows what the machine thought at the same moment.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: lifetime
+    attributes:
+      label: Lifetime average of the process, if you have it
+      description: >
+        The scan prints this for anything it flags. For a false negative you can
+        compute it as cumulative CPU time divided by process age — `ps -o time,etime`
+        gives you both.
+      placeholder: "e.g. 4% over 12d, or 99% over 6d"
+
+  - type: input
+    id: chip
+    attributes:
+      label: Chip and macOS version
+      placeholder: "M4, macOS 26.6"
+    validations:
+      required: true
