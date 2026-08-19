@@ -118,6 +118,24 @@ average stays below 70%. The two rules are mutually exclusive by construction �
 one rule's ceiling is the other's floor — so a stuck process is never reported
 twice.
 
+### Ask who already knows
+
+The same principle applies beyond CPU. Swap fullness looks like a pressure
+signal and is not one: macOS grows the swap file under pressure and **never
+shrinks it while running**, so it records where a machine has been, not where it
+is. Keyed on that alone, a rule stays lit for hours against a system that
+recovered — which is how alerts get ignored.
+
+Rather than approximate current pressure from a paging rate and invent a
+threshold for it, `SwapPressureRule` reads
+`kern.memorystatus_vm_pressure_level`: the kernel's own live verdict, the same
+one behind Activity Monitor's pressure graph and macOS's decisions about
+terminating applications. It weighs compression ratio, clean page availability
+and file-backed pressure, none of which is visible from here.
+
+Fullness decides *whether* to speak. The kernel decides *how loudly*. Every
+threshold not invented here is one that never needs calibrating.
+
 ### Two platform details that will bite you
 
 **`pti_total_user` is not nanoseconds on Apple Silicon**, despite the header
@@ -140,7 +158,7 @@ happened. Identity is `pid + start time`.
 |---|---|---|
 | `LifetimeCpuRule` | lifetime ≥ 70%, current ≥ 50%, age ≥ 2h | no |
 | `SustainedCpuRule` | ≥ 80% every reading for 10+ min, lifetime < 70%, age ≥ 2h | yes, in memory |
-| `SwapPressureRule` | swap ≥ 70% used (90% critical) | no |
+| `SwapPressureRule` | swap ≥ 70% used; severity from the kernel's pressure level | no |
 | `DiskPressureRule` | ≤ 10% free (5% critical) | no |
 
 Every threshold is a constructor parameter.
