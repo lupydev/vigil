@@ -5,6 +5,14 @@ public struct ResourceSnapshot: Equatable, Sendable, Codable {
     public let swapUsedBytes: UInt64
     public let swapTotalBytes: UInt64
     public let memoryFreeFraction: Double
+
+    /// What the kernel currently thinks of the memory situation.
+    ///
+    /// Swap fullness alone is a high-water mark: macOS never shrinks the swap
+    /// file while running, so it records where the machine has been rather than
+    /// where it is. This is the reading that says *now*.
+    public let memoryPressureLevel: MemoryPressureLevel
+
     public let diskFreeBytes: UInt64
     public let diskTotalBytes: UInt64
 
@@ -12,12 +20,14 @@ public struct ResourceSnapshot: Equatable, Sendable, Codable {
         swapUsedBytes: UInt64,
         swapTotalBytes: UInt64,
         memoryFreeFraction: Double,
+        memoryPressureLevel: MemoryPressureLevel = .unknown,
         diskFreeBytes: UInt64,
         diskTotalBytes: UInt64
     ) {
         self.swapUsedBytes = swapUsedBytes
         self.swapTotalBytes = swapTotalBytes
         self.memoryFreeFraction = memoryFreeFraction
+        self.memoryPressureLevel = memoryPressureLevel
         self.diskFreeBytes = diskFreeBytes
         self.diskTotalBytes = diskTotalBytes
     }

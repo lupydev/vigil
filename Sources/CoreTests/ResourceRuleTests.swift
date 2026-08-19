@@ -7,15 +7,31 @@ enum SwapPressureRuleTests {
     static var suite: Suite {
         Suite(name: "SwapPressureRule", cases: [
             TestCase(name: "reports nothing when no swap is allocated", run: handlesZeroSwapTotal),
-            TestCase(name: "flags near-exhausted swap as critical", run: flagsExhaustedSwap),
-            TestCase(name: "flags elevated swap as a warning", run: flagsElevatedSwap),
             TestCase(name: "stays quiet at healthy swap levels", run: ignoresHealthySwap),
+            TestCase(name: "escalates to critical only when the kernel does", run: followsKernelCritical),
+            TestCase(name: "warns when the kernel reports elevated pressure", run: followsKernelWarning),
+            TestCase(name: "downgrades to info once pressure has passed", run: downgradesStaleSwap),
+            TestCase(name: "never escalates on an unavailable pressure reading", run: neverEscalatesOnUnknown),
+            TestCase(name: "severity ignores how full swap is", run: severityIndependentOfFullness),
         ])
     }
 
-    static func history(swapUsed: UInt64, swapTotal: UInt64) -> SampleHistory {
+    static func history(
+        swapUsed: UInt64,
+        swapTotal: UInt64,
+        pressure: MemoryPressureLevel = .normal,
+        memoryFree: Double = 0.46
+    ) -> SampleHistory {
         SampleHistory(samples: [
-            makeSample(at: origin, resources: makeResources(swapUsed: swapUsed, swapTotal: swapTotal))
+            makeSample(
+                at: origin,
+                resources: makeResources(
+                    swapUsed: swapUsed,
+                    swapTotal: swapTotal,
+                    memoryFree: memoryFree,
+                    pressure: pressure
+                )
+            )
         ])
     }
 
@@ -25,24 +41,76 @@ enum SwapPressureRuleTests {
         t.expect(rule.evaluate(history(swapUsed: 0, swapTotal: 0)).isEmpty, "zero swap is health, not pressure")
     }
 
-    /// The state the machine was actually found in: 18.5 GB of 19.4 GB.
-    static func flagsExhaustedSwap(_ t: Assertions) {
-        let anomalies = rule.evaluate(history(swapUsed: 19_440_000_000, swapTotal: 20_400_000_000))
+    static func ignoresHealthySwap(_ t: Assertions) {
+        t.expect(
+            rule.evaluate(history(swapUsed: 6_000_000_000, swapTotal: 20_000_000_000, pressure: .critical)).isEmpty,
+            "without swap overflow there is nothing to report, whatever the pressure"
+        )
+    }
+
+    static func followsKernelCritical(_ t: Assertions) {
+        let anomalies = rule.evaluate(
+            history(swapUsed: 19_440_000_000, swapTotal: 20_400_000_000, pressure: .critical, memoryFree: 0.05)
+        )
 
         t.equal(anomalies.count, 1)
         t.equal(anomalies.first?.severity, .critical)
         t.isNil(anomalies.first?.remedy.command)
     }
 
-    static func flagsElevatedSwap(_ t: Assertions) {
-        let anomalies = rule.evaluate(history(swapUsed: 15_000_000_000, swapTotal: 20_000_000_000))
+    static func followsKernelWarning(_ t: Assertions) {
+        let anomalies = rule.evaluate(
+            history(swapUsed: 15_000_000_000, swapTotal: 20_000_000_000, pressure: .warning)
+        )
 
         t.equal(anomalies.count, 1)
         t.equal(anomalies.first?.severity, .warning)
     }
 
-    static func ignoresHealthySwap(_ t: Assertions) {
-        t.expect(rule.evaluate(history(swapUsed: 6_000_000_000, swapTotal: 20_000_000_000)).isEmpty)
+    /// Regression for issue #1.
+    ///
+    /// macOS never shrinks the swap file while running, so a machine that was
+    /// briefly starved keeps reporting a full swap for hours afterwards. The
+    /// observed case: swap 84% full, kernel pressure back to normal, memory free
+    /// recovered from 18% to 46%, and not one page swapped out between readings.
+    /// The old rule kept firing CRITICAL against a healthy machine.
+    static func downgradesStaleSwap(_ t: Assertions) {
+        let anomalies = rule.evaluate(
+            history(swapUsed: 6_000_000_000, swapTotal: 7_168_000_000, pressure: .normal, memoryFree: 0.46)
+        )
+
+        t.equal(anomalies.count, 1)
+        t.equal(anomalies.first?.severity, .info)
+        t.expect(
+            anomalies.first?.title.contains("held over from earlier") == true,
+            "the title should say the condition is historical"
+        )
+    }
+
+    /// An unreadable sysctl is the absence of evidence, not evidence of calm —
+    /// but it must never manufacture urgency either.
+    static func neverEscalatesOnUnknown(_ t: Assertions) {
+        let anomalies = rule.evaluate(
+            history(swapUsed: 19_440_000_000, swapTotal: 20_400_000_000, pressure: .unknown)
+        )
+
+        t.equal(anomalies.count, 1)
+        t.equal(anomalies.first?.severity, .info)
+    }
+
+    /// The whole point of the fix: how full swap is decides *whether* to speak,
+    /// never *how loudly*.
+    static func severityIndependentOfFullness(_ t: Assertions) {
+        let fractions: [(UInt64, UInt64)] = [
+            (14_000_000_000, 20_000_000_000),   // 70%
+            (18_000_000_000, 20_000_000_000),   // 90%
+            (19_800_000_000, 20_000_000_000),   // 99%
+        ]
+
+        for (used, total) in fractions {
+            let anomalies = rule.evaluate(history(swapUsed: used, swapTotal: total, pressure: .normal))
+            t.equal(anomalies.first?.severity, .info)
+        }
     }
 }
 

@@ -15,8 +15,9 @@ enum DiagnosticianTests {
     static func ranksBySeverity(_ t: Assertions) {
         let startedAt = origin.addingTimeInterval(-6 * 86_400)
         let resources = makeResources(
-            swapUsed: 15_000_000_000,   // warning
+            swapUsed: 15_000_000_000,   // overflowed, and the kernel agrees
             swapTotal: 20_000_000_000,
+            pressure: .warning,
             diskFree: 38_000_000_000,   // healthy
             diskTotal: 245_000_000_000
         )

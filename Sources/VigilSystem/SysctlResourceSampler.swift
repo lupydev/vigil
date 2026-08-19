@@ -18,6 +18,7 @@ public struct SysctlResourceSampler: ResourceSampler {
             swapUsedBytes: swap.used,
             swapTotalBytes: swap.total,
             memoryFreeFraction: Self.memoryFreeFraction(),
+            memoryPressureLevel: Self.memoryPressureLevel(),
             diskFreeBytes: disk.free,
             diskTotalBytes: disk.total
         )
@@ -56,6 +57,19 @@ public struct SysctlResourceSampler: ResourceSampler {
         guard physical > 0 else { return 0 }
 
         return min(1, available / physical)
+    }
+
+    /// The kernel's live memory pressure verdict.
+    ///
+    /// Same levels `dispatch` publishes as `DISPATCH_MEMORYPRESSURE_NORMAL`
+    /// (1), `WARN` (2) and `CRITICAL` (4). An unavailable sysctl yields
+    /// `.unknown`, which never escalates a finding.
+    private static func memoryPressureLevel() -> MemoryPressureLevel {
+        var level: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        let result = sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0)
+        guard result == 0 else { return .unknown }
+        return MemoryPressureLevel(rawValue: Int(level)) ?? .unknown
     }
 
     private static func diskUsage(at url: URL) -> (free: UInt64, total: UInt64) {

@@ -32,6 +32,7 @@ func makeResources(
     swapUsed: UInt64 = 0,
     swapTotal: UInt64 = 0,
     memoryFree: Double = 0.6,
+    pressure: MemoryPressureLevel = .normal,
     diskFree: UInt64 = 40_000_000_000,
     diskTotal: UInt64 = 245_000_000_000
 ) -> ResourceSnapshot {
@@ -39,6 +40,7 @@ func makeResources(
         swapUsedBytes: swapUsed,
         swapTotalBytes: swapTotal,
         memoryFreeFraction: memoryFree,
+        memoryPressureLevel: pressure,
         diskFreeBytes: diskFree,
         diskTotalBytes: diskTotal
     )
