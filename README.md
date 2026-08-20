@@ -217,6 +217,30 @@ kernel a sharper question.
 
 ## Install
 
+```bash
+brew install lupydev/tap/vigil
+open $(brew --prefix)/opt/vigil/Vigil.app
+```
+
+That compiles on your machine, and it is deliberate. A prebuilt `.app`
+downloaded from the internet needs Developer ID signing and Apple notarization
+to clear Gatekeeper; without them macOS refuses to open it after an install that
+appeared to succeed — worse than no packaging at all. A locally built binary is
+never quarantined. Homebrew already requires the Command Line Tools, which
+provide the Swift toolchain, so this asks for nothing a Homebrew user does not
+already have. The cost is about a minute of compiling.
+
+To keep it around, copy it into Applications and add it to Login Items:
+
+```bash
+cp -R $(brew --prefix)/opt/vigil/Vigil.app /Applications/
+```
+
+The app lives only in the menu bar — no Dock icon, no window. Click the
+stethoscope to open it.
+
+### From source
+
 Requires macOS 14+ and a Swift 6 toolchain. Command Line Tools are enough — full
 Xcode is not needed.
 
@@ -225,9 +249,6 @@ git clone https://github.com/lupydev/vigil.git
 cd vigil
 ./scripts/bundle.sh && open build/Vigil.app
 ```
-
-The app lives only in the menu bar — no Dock icon, no window. Click the
-stethoscope to open it.
 
 ### Terminal
 
