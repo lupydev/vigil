@@ -11,10 +11,22 @@ CONFIGURATION="${1:-release}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="$ROOT/build/Vigil.app"
 
-cd "$ROOT"
-swift build -c "$CONFIGURATION" --product vigil
+# Extra flags for `swift build`, as a whitespace-separated list.
+#
+# Packaging systems need this: Homebrew builds inside its own sandbox, which
+# SwiftPM's sandbox collides with, so the formula passes --disable-sandbox here
+# rather than carrying its own copy of the bundling logic.
+#
+# The expansions below are written `${arr[@]+"${arr[@]}"}` rather than plain
+# `"${arr[@]}"` because macOS ships bash 3.2, where expanding an empty array
+# under `set -u` is an unbound-variable error — which would break every run
+# that does not set SWIFT_BUILD_FLAGS, i.e. the normal one.
+read -r -a SWIFT_FLAGS <<< "${SWIFT_BUILD_FLAGS:-}"
 
-BINARY="$(swift build -c "$CONFIGURATION" --product vigil --show-bin-path)/vigil"
+cd "$ROOT"
+swift build -c "$CONFIGURATION" --product vigil ${SWIFT_FLAGS[@]+"${SWIFT_FLAGS[@]}"}
+
+BINARY="$(swift build -c "$CONFIGURATION" --product vigil ${SWIFT_FLAGS[@]+"${SWIFT_FLAGS[@]}"} --show-bin-path)/vigil"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
