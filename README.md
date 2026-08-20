@@ -9,6 +9,72 @@ writes nothing to your disk.
 
 ---
 
+## Install
+
+```bash
+brew install lupydev/tap/vigil
+open $(brew --prefix)/opt/vigil/Vigil.app
+```
+
+That compiles on your machine, and it is deliberate. A prebuilt `.app`
+downloaded from the internet needs Developer ID signing and Apple notarization
+to clear Gatekeeper; without them macOS refuses to open it after an install that
+appeared to succeed — worse than no packaging at all. A locally built binary is
+never quarantined. Homebrew already requires the Command Line Tools, which
+provide the Swift toolchain, so this asks for nothing a Homebrew user does not
+already have. The cost is about a minute of compiling.
+
+To keep it around, copy it into Applications and add it to Login Items:
+
+```bash
+cp -R $(brew --prefix)/opt/vigil/Vigil.app /Applications/
+```
+
+The app lives only in the menu bar — no Dock icon, no window. Click the
+stethoscope to open it.
+
+### From the terminal
+
+Homebrew also puts `vigil` on your `PATH`, so a one-off check needs no app at
+all:
+
+```bash
+vigil --scan
+```
+
+`--scan` takes several readings, because current-CPU deltas need consecutive
+samples. `--min-age <seconds>` shortens the two-hour age requirement for a single
+scan, which is the fastest way to try a threshold or reproduce a finding:
+
+```bash
+$ vigil --scan --samples 3 --interval 3 --min-age 30
+
+FINDINGS
+
+  [CRITICAL] yes has burned 99% CPU for its entire 48s life
+      · pid 15763
+      · lifetime average 99%
+      · current 100%
+      · cpu time 47s over 48s
+      · /usr/bin/yes
+      → Confirm the work is genuinely abandoned, then stop the process.
+        kill -9 15763
+```
+
+### From source
+
+Requires macOS 14+ and a Swift 6 toolchain. Command Line Tools are enough — full
+Xcode is not needed.
+
+```bash
+git clone https://github.com/lupydev/vigil.git
+cd vigil
+./scripts/bundle.sh && open build/Vigil.app
+swift run coretests            # domain tests, non-zero exit on failure
+```
+
+---
+
 ## The problem
 
 Software that spawns background work does not always clean it up. A parent
@@ -121,10 +187,13 @@ twice.
 ### Ask who already knows
 
 The same principle applies beyond CPU. Swap fullness looks like a pressure
-signal and is not one: macOS grows the swap file under pressure and **never
-shrinks it while running**, so it records where a machine has been, not where it
-is. Keyed on that alone, a rule stays lit for hours against a system that
-recovered — which is how alerts get ignored.
+signal and is not one, because it **lags** what caused it. Two quantities are
+involved and they behave differently: pages actually *in use* fall again as
+processes exit or their pages are read back, while the *swap files* macOS
+allocated only ever grow while the system is running. Since the denominator
+ratchets up, the fraction stays high long after the pressure is gone. Keyed on
+that alone, a rule stays lit for hours against a recovered system — which is how
+alerts get ignored.
 
 Rather than approximate current pressure from a paging rate and invent a
 threshold for it, `SwapPressureRule` reads
@@ -214,67 +283,6 @@ fix them, with a copy button. You decide, and you run it.
 worked out to 1.26 GB a week — an absurd thing for a resource watchdog to do.
 When something seems to need persisting, the better move is usually to ask the
 kernel a sharper question.
-
-## Install
-
-```bash
-brew install lupydev/tap/vigil
-open $(brew --prefix)/opt/vigil/Vigil.app
-```
-
-That compiles on your machine, and it is deliberate. A prebuilt `.app`
-downloaded from the internet needs Developer ID signing and Apple notarization
-to clear Gatekeeper; without them macOS refuses to open it after an install that
-appeared to succeed — worse than no packaging at all. A locally built binary is
-never quarantined. Homebrew already requires the Command Line Tools, which
-provide the Swift toolchain, so this asks for nothing a Homebrew user does not
-already have. The cost is about a minute of compiling.
-
-To keep it around, copy it into Applications and add it to Login Items:
-
-```bash
-cp -R $(brew --prefix)/opt/vigil/Vigil.app /Applications/
-```
-
-The app lives only in the menu bar — no Dock icon, no window. Click the
-stethoscope to open it.
-
-### From source
-
-Requires macOS 14+ and a Swift 6 toolchain. Command Line Tools are enough — full
-Xcode is not needed.
-
-```bash
-git clone https://github.com/lupydev/vigil.git
-cd vigil
-./scripts/bundle.sh && open build/Vigil.app
-```
-
-### Terminal
-
-```bash
-swift run vigil --scan       # one-off check against this machine
-swift run coretests          # domain tests, non-zero exit on failure
-```
-
-`--scan` takes several readings, because current-CPU deltas need consecutive
-samples. `--min-age <seconds>` shortens the two-hour age requirement for a single
-scan, which is the fastest way to try a threshold or reproduce a finding:
-
-```bash
-$ swift run vigil --scan --samples 3 --interval 3 --min-age 30
-
-FINDINGS
-
-  [CRITICAL] yes has burned 99% CPU for its entire 48s life
-      · pid 15763
-      · lifetime average 99%
-      · current 100%
-      · cpu time 47s over 48s
-      · /usr/bin/yes
-      → Confirm the work is genuinely abandoned, then stop the process.
-        kill -9 15763
-```
 
 ## Architecture
 

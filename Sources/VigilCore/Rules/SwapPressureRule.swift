@@ -2,12 +2,21 @@ import Foundation
 
 /// Reports swap that has overflowed onto the SSD, and how much it still hurts.
 ///
-/// Swap fullness alone cannot carry a severity. macOS grows the swap file under
-/// pressure and **never shrinks it while running**, so once a machine crosses a
-/// threshold the figure stays high until the next reboot — long after the
-/// pressure that caused it has passed. A rule keyed on that number alone
-/// reports where the machine has been, not where it is, and stays lit for hours
-/// against a healthy system. That is how alerts get ignored.
+/// Swap fullness alone cannot carry a severity, because it **lags** the
+/// condition that produced it. Two different quantities are involved and they
+/// behave differently:
+///
+/// - **used** — pages actually written out. Falls again as processes exit or
+///   their pages are read back, so quitting an application reclaims some of it
+///   without a restart.
+/// - **total** — the size of the swap files macOS allocated. Grows under
+///   pressure and is not given back while the system is running.
+///
+/// Because `total` only ratchets up, the fraction stays high long after memory
+/// pressure has passed. Observed on a recovered machine: 84% full with the
+/// kernel reporting normal pressure, memory free back to 46%, and not one page
+/// swapped out between readings. A rule keyed on fullness alone stays lit for
+/// hours against a healthy system, which is how alerts get ignored.
 ///
 /// So fullness is treated as a fact, and severity comes from
 /// `kern.memorystatus_vm_pressure_level` — the kernel's own live verdict, which
@@ -49,8 +58,10 @@ public struct SwapPressureRule: AnomalyRule {
                 ],
                 remedy: Remedy(
                     summary: pressure >= .warning
-                        ? "Close what you no longer need. A restart is what reclaims the swap."
-                        : "Nothing is urgent. A restart reclaims the \(used) still held.",
+                        ? "Quit whichever application is holding the most memory — its pages are "
+                            + "released as it exits. Logging out clears them all without a restart."
+                        : "Nothing is urgent. Quitting a heavy application still reclaims part of "
+                            + "the \(used) in use; only the swap files themselves wait for a restart.",
                     command: nil
                 )
             )
@@ -98,9 +109,10 @@ public struct SwapPressureRule: AnomalyRule {
                 """
         case .normal, .unknown:
             return """
-                The kernel reports normal memory pressure, so whatever caused this has \
-                already passed. macOS does not shrink the swap file while running, so \
-                \(used) stays committed until the next restart. Worth knowing, not worth \
+                The kernel reports normal memory pressure, so whatever caused this has already \
+                passed. The figure stays high because macOS does not shrink the swap files it \
+                allocated — but the \(used) in use is not stuck: those pages are released as \
+                processes exit or their pages are read back. Worth knowing, not worth \
                 interrupting anything for.
                 """
         }
