@@ -11,10 +11,17 @@ writes nothing to your disk.
 
 ## Install
 
+Needs [Homebrew](https://brew.sh), which macOS does not ship — if `brew --version`
+prints nothing, install it first.
+
 ```bash
-brew install lupydev/tap/vigil
-open $(brew --prefix)/opt/vigil/Vigil.app
+brew install lupydev/tap/vigil && open "$(brew --prefix)/opt/vigil/Vigil.app"
 ```
+
+The two are chained on purpose: without it, a missing `brew` makes
+`$(brew --prefix)` expand to nothing and the second command complains about
+`/opt/vigil/Vigil.app`, a path that exists nowhere — burying the one error that
+actually explained the problem.
 
 That compiles on your machine, and it is deliberate. A prebuilt `.app`
 downloaded from the internet needs Developer ID signing and Apple notarization
@@ -27,7 +34,7 @@ already have. The cost is about a minute of compiling.
 To keep it around, copy it into Applications and add it to Login Items:
 
 ```bash
-cp -R $(brew --prefix)/opt/vigil/Vigil.app /Applications/
+cp -R "$(brew --prefix)/opt/vigil/Vigil.app" /Applications/
 ```
 
 The app lives only in the menu bar — no Dock icon, no window. Click the
